@@ -1,4 +1,4 @@
-# # **Backtesting Momentum Trading Strategies using OpenBB**
+# # **Backtesting Momentum Strategies using OpenBB**
 #
 # %%
 
