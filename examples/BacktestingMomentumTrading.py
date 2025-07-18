@@ -1,16 +1,7 @@
-# %% md
 # # **Backtesting Momentum Trading Strategies using OpenBB**
 #
-# This notebook demonstrates a class-based implementation of a momentum trading strategy using historical stock price data from OpenBB. The strategy buys or sells assets based on moving average crossovers and compares performance to a buy-and-hold approach.
-#
-# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)]
-#
-#
-# (https://colab.research.google.com/drive/1FCMR2oFACCP-YciCcvN5qRnh1r1GypzV?usp=sharing)
 # %%
-# Install OpenBB
 
-# %%
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
