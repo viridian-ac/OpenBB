@@ -2,25 +2,20 @@ import pandas as pd
 import plotly.graph_objects as go
 from openbb import obb
 import start
+
+
 # Set FRED API key
 obb.user.credentials.fred_api_key = start.FRED_API_KEY
-us10year = obb.economy.fred_series(
-    "DGS10", frequency="d", start_date="2018-08-30", end_date="2025-07-18"
-)
-
-
-
-
-
 data = pd.DataFrame()
 
+end_date = "2025-07-18"
 
 cols_dict = {"GC=F": "Gold", "HG=F": "Copper"}
 data = (
     obb.derivatives.futures.historical(
         ["GC", "HG"],
         start_date="2000-01-01",
-        end_date="2024-08-19",
+        end_date=end_date,
         interval="1W",
     )
     .to_df()
@@ -31,33 +26,57 @@ data.index = pd.to_datetime(data.index)
 #%% md
 # Let's inspect the results.
 #%%
-data.head(2)
+# print(data.head(2))
 #%% md
 # To get the copper-to-gold ratio, divide the two columns along each row.
 #%%
 data["Copper/Gold Ratio"] = data["Copper"] / data["Gold"]
 
-data.tail(2)
+# print(data.tail(2))
 #%% md
-# Because the numbers are so small, the ratio is often be presented as a % value.  0.2% is a popular way to display the value.  However, to plot it on the same y-axis as a Treasury yield, it needs to be multiplied by 1000.  Let's alter the block above to include this.
+# Because the numbers are so small, the ratio is often be presented as a % value.
+# 0.2% is a popular way to display the value.  However, to plot it on the same y-axis as a Treasury yield, it needs to be multiplied by 1000.  Let's alter the block above to include this.
 #%%
 data["Copper/Gold Ratio"] = (data["Copper"] / data["Gold"]) * 1000
 
-data.tail(2)
+# print(data.tail(2))
 #%% md
-# Now let's add a column for the daily 10 Year US Treasury Yield.  This can be requested using the `fred_series` function within the `economy` module.  The first line in the block below requests the data, the second assigns it to a column in the target DataFrame.
+# Now let's add a column for the daily 10 Year US Treasury Yield.
+# This can be requested using the `fred_series` function within the `economy` module.
+# The first line in the block below requests the data, the second assigns it to a column in the target DataFrame.
+"""
+try:
+    us10year = obb.economy.fred_series(
+        "DGS10",
+        frequency="d", # "wem",
+        start_date="2000-08-28",
+        end_date=end_date,
+        provider="fred"
+    ).to_df()[["DGS10"]]
+    if us10year.empty:
+        raise ValueError("No Treasury yield data returned for DGS10")
+except Exception as e:
+    print(f"Error fetching FRED data: {e}")
+    exit()
 
-us10year = obb.economy.fred_series(
-    "DGS10",
-    frequency="wem",
-    start_date="2000-08-28",
-    end_date="2024-08-19",
-    provider="fred",
-    api_key=start.FRED_API_KEY
-).to_df()[["DGS10"]]
-
-
+us10year.index = pd.to_datetime(us10year.index)
+us10year = us10year.resample("W-MON").mean()  # Weekly, ending Monday
 data["US 10-Year Constant Maturity"] = us10year["DGS10"]
+"""
+try:
+    us10year = obb.equity.price.historical(
+        "^TNX",
+        start_date="2000-08-28",
+        end_date=end_date,
+        interval="1W",
+        provider="yfinance"
+    ).to_df()[["close"]]
+    data["US 10-Year Constant Maturity"] = us10year["close"]
+except Exception as e:
+    print(f"Error fetching Yahoo Finance data: {e}")
+    exit()
+
+
 
 data.head(2)
 #%% md
@@ -124,7 +143,7 @@ fig.update_layout(
         title="Copper/Gold Ratio (x1000) %",
         side="left",
         position=0,
-        titlefont=dict(size=12),
+        title_font=dict(size=12),
         showgrid=False,
     ),
     yaxis2=dict(
@@ -132,18 +151,16 @@ fig.update_layout(
         side="right",
         overlaying="y",
         position=1,
-        titlefont=dict(size=12),
+        title_font=dict(size=12),
     ),
     xaxis=dict(title="Date"),
     title="Copper/Gold Ratio vs. US 10-Year Constant Maturity",
     title_y=0.90,
     title_x=0.5,
+    legend=dict(yanchor="top", y=1, xanchor="right", x=1.0, font=dict(size=10)),
 )
 
-# Set the legend position
-fig.update_layout(
-    legend=dict(yanchor="top", y=1, xanchor="right", x=1.0, font=dict(size=10))
-)
+
 
 # Show the plot
 fig.show()
