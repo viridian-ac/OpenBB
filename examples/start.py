@@ -29,4 +29,6 @@
 # ```
 # 
 #%%
-from openbb import obb
+#from openbb import obb
+
+FRED_API_KEY='17c483886f45674dcd86f93b03fac221'
