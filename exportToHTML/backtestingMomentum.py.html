@@ -1,0 +1,139 @@
+<html>
+<head>
+<title>backtestingMomentum.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #676773;}
+.s1 { color: #c9c9d1;}
+.s2 { color: #e0957b;}
+.s3 { color: #c9c9d1;}
+.s4 { color: #5a6e5a; font-style: italic;}
+.s5 { color: #e0957b; font-weight: bold;}
+.s6 { color: #4dacf0;}
+.s7 { color: #62a362;}
+.ls0 { height: 1px; border-width: 0; color: #48415c; background-color:#48415c}
+</style>
+</head>
+<body bgcolor="#1d1d26">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+backtestingMomentum.py</font>
+</center></td></tr></table>
+<pre><span class="s0"># # **Backtesting Momentum Strategies using OpenBB**</span>
+<span class="s0">#</span><hr class="ls0"><span class="s0"># %%</span>
+
+<span class="s2">import </span><span class="s1">pandas </span><span class="s2">as </span><span class="s1">pd</span>
+<span class="s2">import </span><span class="s1">numpy </span><span class="s2">as </span><span class="s1">np</span>
+<span class="s2">import </span><span class="s1">matplotlib.pyplot </span><span class="s2">as </span><span class="s1">plt</span>
+<span class="s2">from </span><span class="s1">openbb </span><span class="s2">import </span><span class="s1">obb</span>
+
+<hr class="ls0"><span class="s0"># %%</span>
+<span class="s2">class </span><span class="s1">MomentumTrader</span><span class="s3">:</span>
+    <span class="s4">&quot;&quot;&quot;A class to implement and backtest a momentum trading strategy using OpenBB data.&quot;&quot;&quot;</span>
+
+    <span class="s2">def </span><span class="s1">__init__(self</span><span class="s5">, </span><span class="s1">symbols</span><span class="s5">, </span><span class="s1">start_date</span><span class="s5">, </span><span class="s1">initial_capital</span><span class="s3">=</span><span class="s6">1000</span><span class="s5">, </span><span class="s1">short_window</span><span class="s3">=</span><span class="s6">40</span><span class="s5">, </span><span class="s1">long_window</span><span class="s3">=</span><span class="s6">100</span><span class="s1">)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot; 
+        Initialize the MomentumTrader with trading parameters. 
+ 
+        Parameters: 
+        - symbols: List of stock symbols (e.g., ['AAPL', 'GOOG']) 
+        - start_date: Start date for historical data (e.g., '2015-01-01') 
+        - initial_capital: Initial portfolio value (default: 10000) 
+        - short_window: Short moving average window (default: 40) 
+        - long_window: Long moving average window (default: 100) 
+        &quot;&quot;&quot;</span>
+        <span class="s1">self.symbols </span><span class="s3">= </span><span class="s1">symbols</span>
+        <span class="s1">self.start_date </span><span class="s3">= </span><span class="s1">start_date</span>
+        <span class="s1">self.initial_capital </span><span class="s3">= </span><span class="s1">initial_capital</span>
+        <span class="s1">self.short_window </span><span class="s3">= </span><span class="s1">short_window</span>
+        <span class="s1">self.long_window </span><span class="s3">= </span><span class="s1">long_window</span>
+        <span class="s1">self.data </span><span class="s3">= </span><span class="s1">{}</span>
+
+    <span class="s2">def </span><span class="s1">fetch_data(self</span><span class="s5">, </span><span class="s1">provider</span><span class="s3">=</span><span class="s7">&quot;yfinance&quot;</span><span class="s1">)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot;Fetch historical stock data for all symbols using OpenBB.&quot;&quot;&quot;</span>
+        <span class="s1">dataframes </span><span class="s3">= </span><span class="s1">[]</span>
+        <span class="s2">for </span><span class="s1">symbol </span><span class="s2">in </span><span class="s1">self.symbols</span><span class="s3">:</span>
+            <span class="s2">try</span><span class="s3">:</span>
+                <span class="s1">data </span><span class="s3">= </span><span class="s1">obb.equity.price.historical(</span>
+                    <span class="s1">symbol</span><span class="s3">=</span><span class="s1">symbol</span><span class="s5">,</span>
+                    <span class="s1">start_date</span><span class="s3">=</span><span class="s1">self.start_date</span><span class="s5">,</span>
+                    <span class="s1">provider</span><span class="s3">=</span><span class="s1">provider</span>
+                <span class="s1">).to_df()</span>
+                <span class="s1">data[</span><span class="s7">'Symbol'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">symbol</span>
+                <span class="s1">dataframes.append(data)</span>
+            <span class="s2">except </span><span class="s1">Exception </span><span class="s2">as </span><span class="s1">e</span><span class="s3">:</span>
+                <span class="s1">print(</span><span class="s7">f&quot;Failed to fetch data for </span><span class="s2">{</span><span class="s1">symbol</span><span class="s2">}</span><span class="s7">: </span><span class="s2">{</span><span class="s1">str(e)</span><span class="s2">}</span><span class="s7">&quot;</span><span class="s1">)</span>
+
+        <span class="s1">combined_data </span><span class="s3">= </span><span class="s1">pd.concat(dataframes).reset_index()</span>
+        <span class="s1">self.data </span><span class="s3">= </span><span class="s1">{symbol</span><span class="s3">: </span><span class="s1">combined_data[combined_data[</span><span class="s7">'Symbol'</span><span class="s1">] </span><span class="s3">== </span><span class="s1">symbol].copy()</span>
+                     <span class="s2">for </span><span class="s1">symbol </span><span class="s2">in </span><span class="s1">self.symbols}</span>
+
+    <span class="s2">def </span><span class="s1">momentum_strategy(self</span><span class="s5">, </span><span class="s1">data)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot;Apply momentum strategy based on moving average crossovers.&quot;&quot;&quot;</span>
+        <span class="s1">data[</span><span class="s7">'Short MA'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">data[</span><span class="s7">'close'</span><span class="s1">].rolling(window</span><span class="s3">=</span><span class="s1">self.short_window</span><span class="s5">, </span><span class="s1">min_periods</span><span class="s3">=</span><span class="s6">1</span><span class="s1">).mean()</span>
+        <span class="s1">data[</span><span class="s7">'Long MA'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">data[</span><span class="s7">'close'</span><span class="s1">].rolling(window</span><span class="s3">=</span><span class="s1">self.long_window</span><span class="s5">, </span><span class="s1">min_periods</span><span class="s3">=</span><span class="s6">1</span><span class="s1">).mean()</span>
+        <span class="s1">data[</span><span class="s7">'Signal'</span><span class="s1">] </span><span class="s3">= </span><span class="s6">0</span>
+        <span class="s1">signal_values </span><span class="s3">= </span><span class="s1">np.where(</span>
+            <span class="s1">data[</span><span class="s7">'Short MA'</span><span class="s1">][self.short_window</span><span class="s3">:</span><span class="s1">] </span><span class="s3">&gt; </span><span class="s1">data[</span><span class="s7">'Long MA'</span><span class="s1">][self.short_window</span><span class="s3">:</span><span class="s1">]</span><span class="s5">, </span><span class="s6">1</span><span class="s5">, </span><span class="s3">-</span><span class="s6">1</span>
+        <span class="s1">)</span>
+        <span class="s1">data.loc[data.index[self.short_window</span><span class="s3">:</span><span class="s1">]</span><span class="s5">, </span><span class="s7">'Signal'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">signal_values</span>
+        <span class="s1">data[</span><span class="s7">'Position'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">data[</span><span class="s7">'Signal'</span><span class="s1">].shift(</span><span class="s6">1</span><span class="s1">)</span>
+        <span class="s2">return </span><span class="s1">data</span>
+
+    <span class="s2">def </span><span class="s1">backtest(self</span><span class="s5">, </span><span class="s1">data)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot;Backtest the momentum strategy and calculate returns.&quot;&quot;&quot;</span>
+        <span class="s1">data[</span><span class="s7">'Daily Return'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">data[</span><span class="s7">'close'</span><span class="s1">].pct_change()</span>
+        <span class="s1">data[</span><span class="s7">'Strategy Return'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">data[</span><span class="s7">'Position'</span><span class="s1">] </span><span class="s3">* </span><span class="s1">data[</span><span class="s7">'Daily Return'</span><span class="s1">]</span>
+        <span class="s1">data[</span><span class="s7">'Cumulative Market Return'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">(</span><span class="s6">1 </span><span class="s3">+ </span><span class="s1">data[</span><span class="s7">'Daily Return'</span><span class="s1">]).cumprod()</span>
+        <span class="s1">data[</span><span class="s7">'Cumulative Strategy Return'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">(</span><span class="s6">1 </span><span class="s3">+ </span><span class="s1">data[</span><span class="s7">'Strategy Return'</span><span class="s1">]).cumprod()</span>
+        <span class="s1">data[</span><span class="s7">'Portfolio Value'</span><span class="s1">] </span><span class="s3">= </span><span class="s1">self.initial_capital </span><span class="s3">* </span><span class="s1">data[</span><span class="s7">'Cumulative Strategy Return'</span><span class="s1">]</span>
+        <span class="s2">return </span><span class="s1">data</span>
+
+    <span class="s2">def </span><span class="s1">visualize_backtest(self</span><span class="s5">, </span><span class="s1">data</span><span class="s5">, </span><span class="s1">symbol)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot;Visualize strategy vs. buy-and-hold returns.&quot;&quot;&quot;</span>
+        <span class="s1">plt.figure(figsize</span><span class="s3">=</span><span class="s1">(</span><span class="s6">12</span><span class="s5">, </span><span class="s6">7</span><span class="s1">))</span>
+        <span class="s1">plt.plot(data[</span><span class="s7">'date'</span><span class="s1">]</span><span class="s5">, </span><span class="s1">data[</span><span class="s7">'Cumulative Market Return'</span><span class="s1">]</span><span class="s5">,</span>
+                 <span class="s1">label</span><span class="s3">=</span><span class="s7">'Market Return (Buy &amp; Hold)'</span><span class="s5">, </span><span class="s1">color</span><span class="s3">=</span><span class="s7">'blue'</span><span class="s1">)</span>
+        <span class="s1">plt.plot(data[</span><span class="s7">'date'</span><span class="s1">]</span><span class="s5">, </span><span class="s1">data[</span><span class="s7">'Cumulative Strategy Return'</span><span class="s1">]</span><span class="s5">,</span>
+                 <span class="s1">label</span><span class="s3">=</span><span class="s7">'Momentum Strategy Return'</span><span class="s5">, </span><span class="s1">color</span><span class="s3">=</span><span class="s7">'green'</span><span class="s1">)</span>
+        <span class="s1">plt.title(</span><span class="s7">f'</span><span class="s2">{</span><span class="s1">symbol</span><span class="s2">} </span><span class="s7">Backtest: Momentum Strategy vs Buy &amp; Hold'</span><span class="s5">,</span>
+                  <span class="s1">fontsize</span><span class="s3">=</span><span class="s6">16</span><span class="s5">, </span><span class="s1">fontweight</span><span class="s3">=</span><span class="s7">'bold'</span><span class="s1">)</span>
+        <span class="s1">plt.xlabel(</span><span class="s7">'Date'</span><span class="s5">, </span><span class="s1">fontsize</span><span class="s3">=</span><span class="s6">12</span><span class="s1">)</span>
+        <span class="s1">plt.ylabel(</span><span class="s7">'Cumulative Return'</span><span class="s5">, </span><span class="s1">fontsize</span><span class="s3">=</span><span class="s6">12</span><span class="s1">)</span>
+        <span class="s1">plt.xticks(rotation</span><span class="s3">=</span><span class="s6">45</span><span class="s1">)</span>
+        <span class="s1">plt.legend()</span>
+        <span class="s1">plt.show()</span>
+
+    <span class="s2">def </span><span class="s1">run(self)</span><span class="s3">:</span>
+        <span class="s4">&quot;&quot;&quot;Execute the full backtesting process for all symbols.&quot;&quot;&quot;</span>
+        <span class="s1">self.fetch_data()</span>
+        <span class="s2">for </span><span class="s1">symbol </span><span class="s2">in </span><span class="s1">self.symbols</span><span class="s3">:</span>
+            <span class="s2">if </span><span class="s1">symbol </span><span class="s2">in </span><span class="s1">self.data</span><span class="s3">:</span>
+                <span class="s1">stock_data </span><span class="s3">= </span><span class="s1">self.momentum_strategy(self.data[symbol])</span>
+                <span class="s1">stock_data </span><span class="s3">= </span><span class="s1">self.backtest(stock_data)</span>
+                <span class="s1">self.data[symbol] </span><span class="s3">= </span><span class="s1">stock_data</span>
+
+                <span class="s1">self.visualize_backtest(stock_data</span><span class="s5">, </span><span class="s1">symbol)</span>
+
+                <span class="s1">final_portfolio_value </span><span class="s3">= </span><span class="s1">stock_data[</span><span class="s7">'Portfolio Value'</span><span class="s1">].iloc[</span><span class="s3">-</span><span class="s6">1</span><span class="s1">]</span>
+                <span class="s1">total_market_return </span><span class="s3">= </span><span class="s1">stock_data[</span><span class="s7">'Cumulative Market Return'</span><span class="s1">].iloc[</span><span class="s3">-</span><span class="s6">1</span><span class="s1">] </span><span class="s3">- </span><span class="s6">1</span>
+                <span class="s1">total_strategy_return </span><span class="s3">= </span><span class="s1">stock_data[</span><span class="s7">'Cumulative Strategy Return'</span><span class="s1">].iloc[</span><span class="s3">-</span><span class="s6">1</span><span class="s1">] </span><span class="s3">- </span><span class="s6">1</span>
+
+                <span class="s1">print(</span><span class="s7">f&quot;Final portfolio value for </span><span class="s2">{</span><span class="s1">symbol</span><span class="s2">}</span><span class="s7">: $</span><span class="s2">{</span><span class="s1">final_portfolio_value</span><span class="s2">:</span><span class="s7">.2f</span><span class="s2">}</span><span class="s7">&quot;</span><span class="s1">)</span>
+                <span class="s1">print(</span><span class="s7">f&quot;Total market return for </span><span class="s2">{</span><span class="s1">symbol</span><span class="s2">}</span><span class="s7">: </span><span class="s2">{</span><span class="s1">total_market_return </span><span class="s3">* </span><span class="s6">100</span><span class="s2">:</span><span class="s7">.2f</span><span class="s2">}</span><span class="s7">%&quot;</span><span class="s1">)</span>
+                <span class="s1">print(</span><span class="s7">f&quot;Total strategy return for </span><span class="s2">{</span><span class="s1">symbol</span><span class="s2">}</span><span class="s7">: </span><span class="s2">{</span><span class="s1">total_strategy_return </span><span class="s3">* </span><span class="s6">100</span><span class="s2">:</span><span class="s7">.2f</span><span class="s2">}</span><span class="s7">%&quot;</span><span class="s1">)</span>
+                <span class="s1">print(</span><span class="s7">&quot;=&quot; </span><span class="s3">* </span><span class="s6">40</span><span class="s1">)</span>
+
+<hr class="ls0"><span class="s0"># %%</span>
+<span class="s0"># Example usage</span>
+<span class="s1">symbols </span><span class="s3">= </span><span class="s1">[</span><span class="s7">'TSLA'</span><span class="s5">, </span><span class="s7">'GOOG'</span><span class="s5">, </span><span class="s7">'MSFT'</span><span class="s5">, </span><span class="s7">'NVDA'</span><span class="s1">]</span>
+<span class="s1">start_date </span><span class="s3">= </span><span class="s7">'2015-01-01'</span>
+<span class="s1">initial_capital </span><span class="s3">= </span><span class="s6">10000</span>
+<span class="s1">short_window </span><span class="s3">= </span><span class="s6">10</span>
+<span class="s1">long_window </span><span class="s3">= </span><span class="s6">100</span>
+
+<span class="s1">trader </span><span class="s3">= </span><span class="s1">MomentumTrader(symbols</span><span class="s5">, </span><span class="s1">start_date</span><span class="s5">, </span><span class="s1">initial_capital</span><span class="s5">, </span><span class="s1">short_window</span><span class="s5">, </span><span class="s1">long_window)</span>
+<span class="s1">trader.run()</span></pre>
+</body>
+</html>

@@ -1,12 +1,8 @@
-# # **Backtesting Momentum Strategies using OpenBB**
-#
-# %%
-
+# Import necessary libraries
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from openbb import obb
-
+from openbb import obb  # OpenBB SDK for financial data access
 
 # %%
 class MomentumTrader:
@@ -17,37 +13,55 @@ class MomentumTrader:
         Initialize the MomentumTrader with trading parameters.
 
         Parameters:
-        - symbols: List of stock symbols (e.g., ['AAPL', 'GOOG'])
-        - start_date: Start date for historical data (e.g., '2015-01-01')
-        - initial_capital: Initial portfolio value (default: 10000)
-        - short_window: Short moving average window (default: 40)
-        - long_window: Long moving average window (default: 100)
+        - symbols: List of stock symbols to backtest (e.g., ['AAPL', 'GOOG'])
+        - start_date: Start date for fetching historical data (format: 'YYYY-MM-DD')
+        - initial_capital: Starting portfolio value for the backtest
+        - short_window: Number of days for the short-term moving average
+        - long_window: Number of days for the long-term moving average
         """
         self.symbols = symbols
         self.start_date = start_date
         self.initial_capital = initial_capital
         self.short_window = short_window
         self.long_window = long_window
-        self.data = {}
+        self.data = {}  # Dictionary to store stock data for each symbol
 
     def fetch_data(self, provider="yfinance"):
-        """Fetch historical stock data for all symbols using OpenBB."""
+        """
+        Fetch historical stock price data for each symbol using OpenBB.
+
+        Parameters:
+        - provider: Data provider, default is 'yfinance' (Yahoo Finance)
+
+        This function retrieves the historical prices and stores them in the self.data dictionary,
+        where each key is a stock symbol and the value is a DataFrame of prices.
+        """
         dataframes = []
+
         for symbol in self.symbols:
             try:
+                # Use OpenBB to fetch historical data for each symbol
                 data = obb.equity.price.historical(
                     symbol=symbol,
                     start_date=self.start_date,
                     provider=provider
                 ).to_df()
-                data['Symbol'] = symbol
+
+                data['Symbol'] = symbol  # Tag each row with the symbol
                 dataframes.append(data)
+
             except Exception as e:
+                # Handle errors if data fetch fails
                 print(f"Failed to fetch data for {symbol}: {str(e)}")
 
+        # Combine all symbol data into a single DataFrame
         combined_data = pd.concat(dataframes).reset_index()
-        self.data = {symbol: combined_data[combined_data['Symbol'] == symbol].copy()
-                     for symbol in self.symbols}
+
+        # Separate combined data back into a dictionary of DataFrames by symbol
+        self.data = {
+            symbol: combined_data[combined_data['Symbol'] == symbol].copy()
+            for symbol in self.symbols
+        }
 
     def momentum_strategy(self, data):
         """Apply momentum strategy based on moving average crossovers."""
