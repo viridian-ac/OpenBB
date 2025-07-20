@@ -64,52 +64,123 @@ class MomentumTrader:
         }
 
     def momentum_strategy(self, data):
-        """Apply momentum strategy based on moving average crossovers."""
+        """
+        Apply a simple momentum strategy based on moving average crossovers.
+
+        Parameters:
+        - data: A DataFrame containing stock price data
+
+        Returns:
+        - The modified DataFrame with strategy signals and positions
+
+        Strategy:
+        - Buy signal when short MA crosses above long MA
+        - Sell signal when short MA crosses below long MA
+        """
+        # Calculate moving averages
         data['Short MA'] = data['close'].rolling(window=self.short_window, min_periods=1).mean()
         data['Long MA'] = data['close'].rolling(window=self.long_window, min_periods=1).mean()
+
+        # Initialize signal column
         data['Signal'] = 0
+
+        # Generate signal: 1 if Short MA > Long MA, else -1
         signal_values = np.where(
             data['Short MA'][self.short_window:] > data['Long MA'][self.short_window:], 1, -1
         )
+
+        # Apply signal values starting from the short window index
         data.loc[data.index[self.short_window:], 'Signal'] = signal_values
+
+        # Shift signal to avoid look-ahead bias (we act on yesterday's signal)
         data['Position'] = data['Signal'].shift(1)
+
         return data
 
     def backtest(self, data):
-        """Backtest the momentum strategy and calculate returns."""
+        """
+        Backtest the strategy by calculating returns and portfolio value over time.
+
+        Parameters:
+        - data: DataFrame with strategy signals and positions
+
+        Returns:
+        - The updated DataFrame with performance metrics
+        """
+        # Calculate daily returns
         data['Daily Return'] = data['close'].pct_change()
+
+        # Apply the trading position to the daily return to simulate strategy returns
         data['Strategy Return'] = data['Position'] * data['Daily Return']
+
+        # Calculate cumulative returns for both market and strategy
         data['Cumulative Market Return'] = (1 + data['Daily Return']).cumprod()
         data['Cumulative Strategy Return'] = (1 + data['Strategy Return']).cumprod()
+
+        # Simulate portfolio value over time using strategy returns
         data['Portfolio Value'] = self.initial_capital * data['Cumulative Strategy Return']
+
         return data
 
     def visualize_backtest(self, data, symbol):
-        """Visualize strategy vs. buy-and-hold returns."""
+        """
+        Generate a plot comparing the momentum strategy to a buy-and-hold strategy.
+
+        Parameters:
+        - data: DataFrame with backtest results
+        - symbol: The stock symbol (used in plot title)
+        """
         plt.figure(figsize=(12, 7))
+
+        # Plot cumulative market return
         plt.plot(data['date'], data['Cumulative Market Return'],
                  label='Market Return (Buy & Hold)', color='blue')
+
+        # Plot cumulative strategy return
         plt.plot(data['date'], data['Cumulative Strategy Return'],
                  label='Momentum Strategy Return', color='green')
+
+        # Add title and axis labels
         plt.title(f'{symbol} Backtest: Momentum Strategy vs Buy & Hold',
                   fontsize=16, fontweight='bold')
         plt.xlabel('Date', fontsize=12)
         plt.ylabel('Cumulative Return', fontsize=12)
+
+        # Improve readability of x-axis
         plt.xticks(rotation=45)
         plt.legend()
+        plt.tight_layout()
         plt.show()
 
     def run(self):
-        """Execute the full backtesting process for all symbols."""
+        """
+        Run the full backtesting pipeline for all symbols:
+        - Fetch data
+        - Apply strategy
+        - Backtest performance
+        - Visualize results
+        - Print summary statistics
+        """
         self.fetch_data()
+
         for symbol in self.symbols:
             if symbol in self.data:
-                stock_data = self.momentum_strategy(self.data[symbol])
+                # Get data for current symbol
+                stock_data = self.data[symbol]
+
+                # Apply the momentum strategy
+                stock_data = self.momentum_strategy(stock_data)
+
+                # Backtest strategy performance
                 stock_data = self.backtest(stock_data)
+
+                # Store updated data
                 self.data[symbol] = stock_data
 
+                # Generate comparison plot
                 self.visualize_backtest(stock_data, symbol)
 
+                # Output final results
                 final_portfolio_value = stock_data['Portfolio Value'].iloc[-1]
                 total_market_return = stock_data['Cumulative Market Return'].iloc[-1] - 1
                 total_strategy_return = stock_data['Cumulative Strategy Return'].iloc[-1] - 1
@@ -120,13 +191,17 @@ class MomentumTrader:
                 print("=" * 40)
 
 
-# %%
-# Example usage
-symbols = ['TSLA', 'GOOG', 'MSFT', 'NVDA']
-start_date = '2015-01-01'
-initial_capital = 10000
-short_window = 10
-long_window = 100
+# Example usage of the MomentumTrader class
+# Define the parameters for the backtest
 
+symbols = ['TSLA', 'GOOG', 'MSFT', 'NVDA']        # List of stock symbols to analyze
+start_date = '2015-01-01'                         # Backtest start date
+initial_capital = 10000                           # Initial capital for each strategy
+short_window = 10                                 # Short-term moving average window
+long_window = 100                                 # Long-term moving average window
+
+# Instantiate the trader object
 trader = MomentumTrader(symbols, start_date, initial_capital, short_window, long_window)
+
+# Run the backtesting pipeline
 trader.run()
